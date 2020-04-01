@@ -1,0 +1,10 @@
+# The query to convert columns to STRUCT
+WITH TitlesAndScores as(
+SELECT ARRAY_AGG(STRUCT(title,score)) as titles,EXTRACT(DATE FROM time_ts) AS date  FROM `bigquery-public-data.hacker_news.stories`
+WHERE score is not null and title is not null
+group by date
+)
+SELECT date, ARRAY(SELECT as STRUCT title,score FROM UNNEST(titles) order by score desc
+limit 2)
+as top_articles
+FROM TitlesAndScores;
