@@ -1,0 +1,22 @@
+#JOIN in BQ 
+WITH TopNames as
+(
+SELECT name,sum(number) as occurrences FROM `bigquery-public-data.usa_names.usa_1910_2013`
+group by name
+ORDER BY occurrences DESC LIMIT 100 
+)
+SELECT name,SUM(word_count) as frequency
+FROM TopNames
+JOIN `bigquery-public-data.samples.shakespeare`
+ON STARTS_WITH(word,name)
+GROUP BY name
+ORDER BY frequency DESC LIMIT 10;
+
+
+#REGEX in BQ
+
+SELECT word,COUNT(word) as count FROM `bigquery-public-data.samples.shakespeare`
+WHERE REGEXP_CONTAINS(word,r'^\w\w\'\w\w')
+group by word
+order by count desc
+LIMIT 3;
