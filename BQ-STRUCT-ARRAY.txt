@@ -8,3 +8,18 @@ SELECT date, ARRAY(SELECT as STRUCT title,score FROM UNNEST(titles) order by sco
 limit 2)
 as top_articles
 FROM TitlesAndScores;
+
+
+--------------------------------------------------------------------------
+
+#STRUCT & ARRAY -- filter ARRAY inside a STRUCT in WHERE CLAUSE
+WITH orders as
+(
+  SELECT 
+      [
+      STRUCT(35 AS age,'JACOB' as name,['apple','pear','banana'] as items ),
+      STRUCT(25 AS age,'MIKE' as name,['water','wine'] as items )
+      ] as customers
+)
+
+SELECT cust FROM orders as o, UNNEST(o.customers) cust

@@ -1,0 +1,13 @@
+
+# ARRAYS -- filter ARRAYs using WHERE clause 
+
+WITH groceries as
+(
+  SELECT ['apple','pear','banana'] as list
+  UNION ALL
+  SELECT ['carrot','apple'] as list
+  UNION ALL
+  SELECT ['water','wine'] as list
+)
+
+SELECT ARRAY(SELECT items FROM UNNEST(list) items WHERE 'apple' in UNNEST(list)) as contains_list FROM groceries;

@@ -1,0 +1,69 @@
+\/*
+  Below script will capture data from london_bycycles public dataset.
+  It will give the most distance travelled by a bike. 
+  
+  GEo Functions used:
+  
+  ST_DISTANCE # Returns the shortest distance in meters between two non-empty GEOGRAPHYs.
+  ST_GEOGPOINT # Creates a GEOGRAPHY with a single point. ST_GEOGPOINT creates a point from the specified FLOAT64 longitude and latitude parameters and returns that point in a GEOGRAPHY value.
+  ST_MAKELINE # Creates a GEOGRAPHY with a single linestring by concatenating the point or line vertices of each of the input GEOGRAPHYs in the order they are given.
+*/
+
+
+
+#gather all the information on the bike 
+with staging as
+(SELECT
+      
+      STRUCT(start_stn.name as sname,
+      ST_GEOGPOINT(start_stn.longitude,start_stn.latitude) as point,
+      start_stn.docks_count as docksc,
+      start_stn.install_date as instaldate
+      ) AS starting,
+      STRUCT(end_stn.name,
+      ST_GEOGPOINT(end_stn.longitude,end_stn.latitude) as point,
+      end_stn.docks_count,
+      end_stn.install_date) AS ending,
+      STRUCT(
+      rental_id,
+      bike_id,
+      duration,
+      ST_DISTANCE( 
+      ST_GEOGPOINT(start_stn.longitude,start_stn.latitude),
+      ST_GEOGPOINT(end_stn.longitude,end_stn.latitude)
+      ) as distance,
+       ST_MAKELINE( 
+      ST_GEOGPOINT(start_stn.longitude,start_stn.latitude),
+      ST_GEOGPOINT(end_stn.longitude,end_stn.latitude)
+      ) as trip_line,
+      start_date,
+      end_date
+      ) AS bike
+FROM `bigquery-public-data.london_bicycles.cycle_stations` AS start_stn
+LEFT JOIN `bigquery-public-data.london_bicycles.cycle_hire` AS b
+ON start_stn.id = b.start_station_id
+LEFT JOIN `bigquery-public-data.london_bicycles.cycle_stations` AS end_stn
+ON end_stn.id = b.end_station_id
+),
+#capture the cumulative distance travelled by bike
+maintenance_stats as
+(
+  SELECT bike.bike_id,
+       STRUCT( RANK() OVER(PARTITION BY bike.bike_id ORDER BY bike.start_date) as current_trip_number,
+        SUM(bike.duration/60/60) OVER (PARTITION BY bike.bike_id ORDER BY bike.start_date) as cumuative_duration_hr,
+        SUM(bike.distance/1000) OVER (PARTITION BY bike.bike_id ORDER BY bike.start_date) as cumulative_distance_km,
+        bike.start_date,
+        bike.end_date
+        ) as stats
+   FROM staging
+)
+#find the bike_id which has travelled most distance
+SELECT RANK() OVER(ORDER BY MAX(stats.cumulative_distance_km) DESC) AS most_distance_km_rank,
+        bike_id,
+        MAX(stats.cumulative_distance_km) as distance_travelled,
+        ARRAY_AGG(stats order by stats.end_date DESC LIMIT 10) as maint_stats
+FROM maintenance_stats
+GROUP BY bike_id
+ORDER BY most_distance_km_rank LIMIT 10
+
+
