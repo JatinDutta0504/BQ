@@ -1,0 +1,10 @@
+
+INSERT INTO `project.dataset.test1`  (OrderNumber)
+VALUES('123'),('234'),('456'),('678');
+
+INSERT INTO `project.dataset.test2`   (OrderNumber)
+VALUES('123');
+
+SELECT * FROM  `project.dataset.test1`
+EXCEPT DISTINCT
+SELECT * FROM `project.dataset.test2`
